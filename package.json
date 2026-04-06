@@ -1,0 +1,51 @@
+{
+  "name": "private-payments-sdk",
+  "version": "0.1.0",
+  "description": "SDK for Private Payments — deposit, transfer, and withdraw tokens privately using zero-knowledge proofs",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist/",
+    "artifacts/"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "clean": "rm -rf dist/"
+  },
+  "dependencies": {
+    "@noble/hashes": "^1.7.1",
+    "@stellar/stellar-sdk": "^14.4.2"
+  },
+  "peerDependencies": {
+    "@stellar/freighter-api": "^6.0.1"
+  },
+  "peerDependenciesMeta": {
+    "@stellar/freighter-api": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@stellar/freighter-api": "^6.0.1",
+    "@types/node": "^25.5.0",
+    "tsup": "^8.4.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "Apache-2.0"
+}
