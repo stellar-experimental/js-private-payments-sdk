@@ -1,0 +1,45 @@
+/**
+ * Pluggable storage backend for persisting SDK state.
+ * The SDK stores notes, Merkle tree leaves, nullifiers, and sync progress.
+ *
+ * Ships with:
+ * - MemoryStorage (testing)
+ * - IndexedDBStorage (browser)
+ * - FileSystemStorage (Node.js)
+ *
+ * Wallet developers can implement this interface to use their own database.
+ *
+ * Store names used by the SDK:
+ * - pool_leaves: { index (key), commitment, ledger }
+ * - pool_nullifiers: { nullifier (key), ledger }
+ * - pool_encrypted_outputs: { commitment (key), index, encryptedOutput, ledger }
+ * - asp_membership_leaves: { index (key), leaf, root, ledger }
+ * - user_notes: { id (key), owner, blinding, amount, leafIndex, spent, ... }
+ * - registered_public_keys: { address (key), encryptionKey, noteKey, ledger }
+ * - sync_metadata: { network (key), lastSyncedLedger, cursor }
+ * - retention_config: { rpcEndpoint (key), windowLedgers, detectedAt }
+ */
+/** Primary key field for each store. Used by storage implementations to key records. */
+export const STORE_KEYS: Record<string, string> = {
+  pool_leaves: 'index',
+  pool_nullifiers: 'nullifier',
+  pool_encrypted_outputs: 'commitment',
+  asp_membership_leaves: 'index',
+  user_notes: 'id',
+  registered_public_keys: 'address',
+  sync_metadata: 'network',
+  retention_config: 'rpcEndpoint',
+};
+
+export interface StorageBackend {
+  get(store: string, key: string): Promise<any | undefined>;
+  getAll(store: string): Promise<any[]>;
+  getAllByIndex(store: string, index: string, value: any): Promise<any[]>;
+  put(store: string, value: any): Promise<void>;
+  putAll(store: string, values: any[]): Promise<void>;
+  del(store: string, key: string): Promise<void>;
+  clear(store: string): Promise<void>;
+  clearAll(): Promise<void>;
+  count(store: string): Promise<number>;
+  iterate(store: string, callback: (value: any) => boolean | void): Promise<void>;
+}
