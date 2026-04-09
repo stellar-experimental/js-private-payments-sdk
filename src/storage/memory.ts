@@ -1,9 +1,12 @@
 import { STORE_KEYS, type StorageBackend } from './storage.js';
 
 export class MemoryStorage implements StorageBackend {
-  private stores = new Map<string, Map<string, any>>();
+  private stores = new Map<string, Map<any, any>>();
 
-  private getStore(name: string): Map<string, any> {
+  async init(): Promise<void> {}
+
+  private getStore(name: string): Map<any, any> {
+    if (!STORE_KEYS[name]) throw new Error(`Unknown store: ${name}`);
     let store = this.stores.get(name);
     if (!store) {
       store = new Map();
@@ -12,16 +15,16 @@ export class MemoryStorage implements StorageBackend {
     return store;
   }
 
-  private getKey(storeName: string, value: any): string {
+  private getKey(storeName: string, value: any): any {
     const keyField = STORE_KEYS[storeName];
-    if (keyField && value && typeof value === 'object') {
-      return String(value[keyField]);
-    }
-    return String(value?.id ?? value?.key ?? '');
+    if (!keyField) throw new Error(`Unknown store: ${storeName}`);
+    const key = value?.[keyField];
+    if (key === undefined || key === null) throw new Error(`Missing key field '${keyField}' in value for store '${storeName}'`);
+    return key;
   }
 
-  async get(store: string, key: string): Promise<any | undefined> {
-    return structuredClone(this.getStore(store).get(String(key)));
+  async get(store: string, key: any): Promise<any | undefined> {
+    return structuredClone(this.getStore(store).get(key));
   }
 
   async getAll(store: string): Promise<any[]> {
@@ -49,8 +52,8 @@ export class MemoryStorage implements StorageBackend {
     }
   }
 
-  async del(store: string, key: string): Promise<void> {
-    this.getStore(store).delete(String(key));
+  async del(store: string, key: any): Promise<void> {
+    this.getStore(store).delete(key);
   }
 
   async clear(store: string): Promise<void> {

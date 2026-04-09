@@ -6,7 +6,7 @@ const DB_VERSION = 1;
 export class IndexedDBStorage implements StorageBackend {
   private db: IDBDatabase | null = null;
 
-  async open(): Promise<void> {
+  async init(): Promise<void> {
     if (this.db) return;
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -39,7 +39,7 @@ export class IndexedDBStorage implements StorageBackend {
     });
   }
 
-  async get(store: string, key: string): Promise<any | undefined> {
+  async get(store: string, key: any): Promise<any | undefined> {
     return this.req(this.tx(store, 'readonly').get(key));
   }
 
@@ -68,7 +68,7 @@ export class IndexedDBStorage implements StorageBackend {
     });
   }
 
-  async del(store: string, key: string): Promise<void> {
+  async del(store: string, key: any): Promise<void> {
     await this.req(this.tx(store, 'readwrite').delete(key));
   }
 

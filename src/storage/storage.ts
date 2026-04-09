@@ -32,12 +32,14 @@ export const STORE_KEYS: Record<string, string> = {
 };
 
 export interface StorageBackend {
-  get(store: string, key: string): Promise<any | undefined>;
+  /** Initialize the storage backend (e.g., open IndexedDB connection). No-op for backends that don't need it. */
+  init(): Promise<void>;
+  get(store: string, key: any): Promise<any | undefined>;
   getAll(store: string): Promise<any[]>;
   getAllByIndex(store: string, index: string, value: any): Promise<any[]>;
   put(store: string, value: any): Promise<void>;
   putAll(store: string, values: any[]): Promise<void>;
-  del(store: string, key: string): Promise<void>;
+  del(store: string, key: any): Promise<void>;
   clear(store: string): Promise<void>;
   clearAll(): Promise<void>;
   count(store: string): Promise<number>;

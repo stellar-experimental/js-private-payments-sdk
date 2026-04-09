@@ -116,6 +116,27 @@ function runStorageTests(name: string, createStorage: () => StorageBackend, clea
       expect(await storage.count('pool_leaves')).toBe(1);
     });
 
+    it('numeric keys work for get and del', async () => {
+      await storage.put('pool_leaves', { index: 0, commitment: '0xabc' });
+      const result = await storage.get('pool_leaves', 0);
+      expect(result).toBeDefined();
+      expect(result.commitment).toBe('0xabc');
+      await storage.del('pool_leaves', 0);
+      expect(await storage.get('pool_leaves', 0)).toBeUndefined();
+    });
+
+    it('throws on unknown store name (write)', async () => {
+      await expect(storage.put('unknown_store', { id: 'a' })).rejects.toThrow('Unknown store');
+    });
+
+    it('throws on unknown store name (read)', async () => {
+      await expect(storage.get('unknown_store', 'a')).rejects.toThrow('Unknown store');
+    });
+
+    it('throws on missing key field', async () => {
+      await expect(storage.put('user_notes', { name: 'no id field' })).rejects.toThrow('Missing key field');
+    });
+
     it('mutations to returned records do not affect storage', async () => {
       await storage.put('user_notes', { id: 'a', amount: '100' });
       const record = await storage.get('user_notes', 'a');

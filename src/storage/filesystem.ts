@@ -7,7 +7,10 @@ export class FileSystemStorage implements StorageBackend {
     mkdirSync(dirPath, { recursive: true });
   }
 
+  async init(): Promise<void> {}
+
   private filePath(store: string): string {
+    if (!STORE_KEYS[store]) throw new Error(`Unknown store: ${store}`);
     return join(this.dirPath, `${store}.json`);
   }
 
@@ -23,15 +26,16 @@ export class FileSystemStorage implements StorageBackend {
 
   private getKey(store: string, value: any): string {
     const keyField = STORE_KEYS[store];
-    if (keyField && value && typeof value === 'object') {
-      return String(value[keyField]);
-    }
-    return String(value?.id ?? value?.key ?? '');
+    if (!keyField) throw new Error(`Unknown store: ${store}`);
+    const key = value?.[keyField];
+    if (key === undefined || key === null) throw new Error(`Missing key field '${keyField}' in value for store '${store}'`);
+    return String(key);
   }
 
-  async get(store: string, key: string): Promise<any | undefined> {
+  async get(store: string, key: any): Promise<any | undefined> {
     const data = this.readStore(store);
-    return data[String(key)] ? structuredClone(data[String(key)]) : undefined;
+    const k = String(key);
+    return data[k] ? structuredClone(data[k]) : undefined;
   }
 
   async getAll(store: string): Promise<any[]> {
@@ -60,7 +64,7 @@ export class FileSystemStorage implements StorageBackend {
     this.writeStore(store, data);
   }
 
-  async del(store: string, key: string): Promise<void> {
+  async del(store: string, key: any): Promise<void> {
     const data = this.readStore(store);
     delete data[String(key)];
     this.writeStore(store, data);
