@@ -13,6 +13,7 @@ vi.mock('@stellar/freighter-api', () => ({
 import {
   isConnected,
   isAllowed,
+  setAllowed,
   requestAccess,
   signTransaction,
   signAuthEntry,
@@ -87,6 +88,22 @@ describe('FreighterSigner', () => {
     const result = await signer.signMessage('Privacy Pool Spending Key [v1]');
     expect(result.signedMessage).toBe('deadbeef');
     expect(result.signerAddress).toBe('GABC123');
+  });
+
+  it('calls setAllowed when not yet allowed', async () => {
+    vi.mocked(isAllowed).mockResolvedValue({ isAllowed: false } as any);
+    vi.mocked(setAllowed).mockResolvedValue({} as any);
+    vi.mocked(requestAccess).mockResolvedValue({ address: 'GABC123' } as any);
+
+    await signer.getPublicKey();
+    expect(setAllowed).toHaveBeenCalled();
+  });
+
+  it('throws when setAllowed fails', async () => {
+    vi.mocked(isAllowed).mockResolvedValue({ isAllowed: false } as any);
+    vi.mocked(setAllowed).mockResolvedValue({ error: 'user denied' } as any);
+
+    await expect(signer.getPublicKey()).rejects.toThrow('Freighter access rejected: user denied');
   });
 
   it('signMessage throws when no signature returned', async () => {

@@ -18,7 +18,7 @@ export class FreighterSigner implements Signer {
     const allowed = await isAllowed();
     if (!allowed?.isAllowed) {
       const set = await setAllowed();
-      if (set?.error) throw new Error('Freighter access rejected');
+      if (set?.error) throw new Error(`Freighter access rejected: ${set.error}`);
     }
   }
 
@@ -48,7 +48,8 @@ export class FreighterSigner implements Signer {
     await this.ensureReady();
     const { signedAuthEntry, signerAddress, error } = await freighterSignAuthEntry(xdr, opts);
     if (error) throw new Error(`Auth entry signing failed: ${error}`);
-    return { signedAuthEntry: signedAuthEntry!, signerAddress };
+    if (!signedAuthEntry) throw new Error('No signed auth entry returned');
+    return { signedAuthEntry, signerAddress };
   }
 
   async signMessage(
