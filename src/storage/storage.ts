@@ -20,7 +20,7 @@
  * - retention_config: { rpcEndpoint (key), windowLedgers, detectedAt }
  */
 /** Primary key field for each store. Used by storage implementations to key records. */
-export const STORE_KEYS: Record<string, string> = {
+export const STORE_KEYS = {
   pool_leaves: 'index',
   pool_nullifiers: 'nullifier',
   pool_encrypted_outputs: 'commitment',
@@ -29,19 +29,21 @@ export const STORE_KEYS: Record<string, string> = {
   registered_public_keys: 'address',
   sync_metadata: 'network',
   retention_config: 'rpcEndpoint',
-};
+} as const;
+
+export type StoreName = keyof typeof STORE_KEYS;
 
 export interface StorageBackend {
   /** Initialize the storage backend (e.g., open IndexedDB connection). No-op for backends that don't need it. */
   init(): Promise<void>;
-  get(store: string, key: any): Promise<any | undefined>;
-  getAll(store: string): Promise<any[]>;
-  getAllByIndex(store: string, index: string, value: any): Promise<any[]>;
-  put(store: string, value: any): Promise<void>;
-  putAll(store: string, values: any[]): Promise<void>;
-  del(store: string, key: any): Promise<void>;
-  clear(store: string): Promise<void>;
+  get(store: StoreName, key: any): Promise<any | undefined>;
+  getAll(store: StoreName): Promise<any[]>;
+  getAllByIndex(store: StoreName, index: string, value: any): Promise<any[]>;
+  put(store: StoreName, value: any): Promise<void>;
+  putAll(store: StoreName, values: any[]): Promise<void>;
+  del(store: StoreName, key: any): Promise<void>;
+  clear(store: StoreName): Promise<void>;
   clearAll(): Promise<void>;
-  count(store: string): Promise<number>;
-  iterate(store: string, callback: (value: any) => boolean | void): Promise<void>;
+  count(store: StoreName): Promise<number>;
+  iterate(store: StoreName, callback: (value: any) => boolean | void): Promise<void>;
 }

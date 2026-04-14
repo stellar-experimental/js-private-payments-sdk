@@ -125,14 +125,6 @@ function runStorageTests(name: string, createStorage: () => StorageBackend, clea
       expect(await storage.get('pool_leaves', 0)).toBeUndefined();
     });
 
-    it('throws on unknown store name (write)', async () => {
-      await expect(storage.put('unknown_store', { id: 'a' })).rejects.toThrow('Unknown store');
-    });
-
-    it('throws on unknown store name (read)', async () => {
-      await expect(storage.get('unknown_store', 'a')).rejects.toThrow('Unknown store');
-    });
-
     it('throws on missing key field', async () => {
       await expect(storage.put('user_notes', { name: 'no id field' })).rejects.toThrow('Missing key field');
     });

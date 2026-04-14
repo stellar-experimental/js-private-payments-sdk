@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { STORE_KEYS, type StorageBackend } from './storage.js';
+import { STORE_KEYS, type StorageBackend, type StoreName } from './storage.js';
 
 export class FileSystemStorage implements StorageBackend {
   constructor(private dirPath: string) {
@@ -9,53 +9,51 @@ export class FileSystemStorage implements StorageBackend {
 
   async init(): Promise<void> {}
 
-  private filePath(store: string): string {
-    if (!STORE_KEYS[store]) throw new Error(`Unknown store: ${store}`);
+  private filePath(store: StoreName): string {
     return join(this.dirPath, `${store}.json`);
   }
 
-  private readStore(store: string): Record<string, any> {
+  private readStore(store: StoreName): Record<string, any> {
     const path = this.filePath(store);
     if (!existsSync(path)) return {};
     return JSON.parse(readFileSync(path, 'utf-8'));
   }
 
-  private writeStore(store: string, data: Record<string, any>): void {
+  private writeStore(store: StoreName, data: Record<string, any>): void {
     writeFileSync(this.filePath(store), JSON.stringify(data, null, 2));
   }
 
-  private getKey(store: string, value: any): string {
+  private getKey(store: StoreName, value: any): string {
     const keyField = STORE_KEYS[store];
-    if (!keyField) throw new Error(`Unknown store: ${store}`);
     const key = value?.[keyField];
     if (key === undefined || key === null) throw new Error(`Missing key field '${keyField}' in value for store '${store}'`);
     return String(key);
   }
 
-  async get(store: string, key: any): Promise<any | undefined> {
+  async get(store: StoreName, key: any): Promise<any | undefined> {
     const data = this.readStore(store);
     const k = String(key);
     return data[k] ? structuredClone(data[k]) : undefined;
   }
 
-  async getAll(store: string): Promise<any[]> {
+  async getAll(store: StoreName): Promise<any[]> {
     return Object.values(this.readStore(store)).map(v => structuredClone(v));
   }
 
-  async getAllByIndex(store: string, index: string, value: any): Promise<any[]> {
+  async getAllByIndex(store: StoreName, index: string, value: any): Promise<any[]> {
     return Object.values(this.readStore(store))
       .filter(record => record[index] === value)
       .map(v => structuredClone(v));
   }
 
-  async put(store: string, value: any): Promise<void> {
+  async put(store: StoreName, value: any): Promise<void> {
     const data = this.readStore(store);
     const key = this.getKey(store, value);
     data[key] = structuredClone(value);
     this.writeStore(store, data);
   }
 
-  async putAll(store: string, values: any[]): Promise<void> {
+  async putAll(store: StoreName, values: any[]): Promise<void> {
     const data = this.readStore(store);
     for (const value of values) {
       const key = this.getKey(store, value);
@@ -64,28 +62,28 @@ export class FileSystemStorage implements StorageBackend {
     this.writeStore(store, data);
   }
 
-  async del(store: string, key: any): Promise<void> {
+  async del(store: StoreName, key: any): Promise<void> {
     const data = this.readStore(store);
     delete data[String(key)];
     this.writeStore(store, data);
   }
 
-  async clear(store: string): Promise<void> {
+  async clear(store: StoreName): Promise<void> {
     this.writeStore(store, {});
   }
 
   async clearAll(): Promise<void> {
-    for (const storeName of Object.keys(STORE_KEYS)) {
+    for (const storeName of Object.keys(STORE_KEYS) as StoreName[]) {
       const path = this.filePath(storeName);
       if (existsSync(path)) rmSync(path);
     }
   }
 
-  async count(store: string): Promise<number> {
+  async count(store: StoreName): Promise<number> {
     return Object.keys(this.readStore(store)).length;
   }
 
-  async iterate(store: string, callback: (value: any) => boolean | void): Promise<void> {
+  async iterate(store: StoreName, callback: (value: any) => boolean | void): Promise<void> {
     for (const value of Object.values(this.readStore(store))) {
       if (callback(structuredClone(value)) === false) break;
     }

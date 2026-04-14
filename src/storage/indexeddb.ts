@@ -1,4 +1,4 @@
-import { STORE_KEYS, type StorageBackend } from './storage.js';
+import { STORE_KEYS, type StorageBackend, type StoreName } from './storage.js';
 
 const DB_NAME = 'private-payments-sdk';
 const DB_VERSION = 1;
@@ -12,7 +12,7 @@ export class IndexedDBStorage implements StorageBackend {
       const request = indexedDB.open(DB_NAME, DB_VERSION);
       request.onupgradeneeded = () => {
         const db = request.result;
-        for (const storeName of Object.keys(STORE_KEYS)) {
+        for (const storeName of Object.keys(STORE_KEYS) as StoreName[]) {
           if (!db.objectStoreNames.contains(storeName)) {
             db.createObjectStore(storeName, { keyPath: STORE_KEYS[storeName] });
           }
@@ -24,11 +24,11 @@ export class IndexedDBStorage implements StorageBackend {
   }
 
   private getDb(): IDBDatabase {
-    if (!this.db) throw new Error('IndexedDBStorage not opened. Call open() first.');
+    if (!this.db) throw new Error('IndexedDBStorage not initialized. Call init() first.');
     return this.db;
   }
 
-  private tx(store: string, mode: IDBTransactionMode): IDBObjectStore {
+  private tx(store: StoreName, mode: IDBTransactionMode): IDBObjectStore {
     return this.getDb().transaction(store, mode).objectStore(store);
   }
 
@@ -39,24 +39,24 @@ export class IndexedDBStorage implements StorageBackend {
     });
   }
 
-  async get(store: string, key: any): Promise<any | undefined> {
+  async get(store: StoreName, key: any): Promise<any | undefined> {
     return this.req(this.tx(store, 'readonly').get(key));
   }
 
-  async getAll(store: string): Promise<any[]> {
+  async getAll(store: StoreName): Promise<any[]> {
     return this.req(this.tx(store, 'readonly').getAll());
   }
 
-  async getAllByIndex(store: string, index: string, value: any): Promise<any[]> {
+  async getAllByIndex(store: StoreName, index: string, value: any): Promise<any[]> {
     const all = await this.getAll(store);
     return all.filter(record => record[index] === value);
   }
 
-  async put(store: string, value: any): Promise<void> {
+  async put(store: StoreName, value: any): Promise<void> {
     await this.req(this.tx(store, 'readwrite').put(value));
   }
 
-  async putAll(store: string, values: any[]): Promise<void> {
+  async putAll(store: StoreName, values: any[]): Promise<void> {
     const tx = this.getDb().transaction(store, 'readwrite');
     const objectStore = tx.objectStore(store);
     for (const value of values) {
@@ -68,25 +68,25 @@ export class IndexedDBStorage implements StorageBackend {
     });
   }
 
-  async del(store: string, key: any): Promise<void> {
+  async del(store: StoreName, key: any): Promise<void> {
     await this.req(this.tx(store, 'readwrite').delete(key));
   }
 
-  async clear(store: string): Promise<void> {
+  async clear(store: StoreName): Promise<void> {
     await this.req(this.tx(store, 'readwrite').clear());
   }
 
   async clearAll(): Promise<void> {
-    for (const storeName of Object.keys(STORE_KEYS)) {
+    for (const storeName of Object.keys(STORE_KEYS) as StoreName[]) {
       await this.clear(storeName);
     }
   }
 
-  async count(store: string): Promise<number> {
+  async count(store: StoreName): Promise<number> {
     return this.req(this.tx(store, 'readonly').count());
   }
 
-  async iterate(store: string, callback: (value: any) => boolean | void): Promise<void> {
+  async iterate(store: StoreName, callback: (value: any) => boolean | void): Promise<void> {
     return new Promise((resolve, reject) => {
       const request = this.tx(store, 'readonly').openCursor();
       request.onsuccess = () => {
