@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 /** Load a binary artifact from a file path, URL, or return existing bytes. */
 export async function loadArtifact(source: string | Uint8Array): Promise<Uint8Array> {
@@ -10,12 +10,14 @@ export async function loadArtifact(source: string | Uint8Array): Promise<Uint8Ar
     return new Uint8Array(await response.arrayBuffer());
   }
 
-  return new Uint8Array(readFileSync(source));
+  // Lazy import node:fs to avoid breaking browser bundles
+  const { readFileSync } = await import('node:fs');
+  return readFileSync(source);
 }
 
 const ARTIFACTS_DIR = '../../artifacts';
 
 export function defaultArtifactPath(filename: string): string {
   const url = new URL(`${ARTIFACTS_DIR}/${filename}`, import.meta.url);
-  return url.pathname;
+  return fileURLToPath(url);
 }
