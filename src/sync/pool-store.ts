@@ -13,35 +13,38 @@ export class PoolStore {
     const leaves = await this.storage.getAll('pool_leaves');
     leaves.sort((a, b) => a.index - b.index);
     for (const leaf of leaves) {
+      const expected = this.bridge.getNextIndex(this.tree);
+      if (leaf.index !== expected) {
+        throw new Error(`Pool tree rebuild failed: expected leaf index ${expected}, got ${leaf.index}. Storage may be corrupted or missing leaves.`);
+      }
       this.bridge.insertLeaf(this.tree, hexToBytes(leaf.commitment));
     }
   }
 
   async processCommitmentEvents(events: CommitmentEvent[]): Promise<void> {
     if (!this.tree) await this.rebuildTree();
-    for (const event of events) {
-      await this.storage.put('pool_leaves', {
-        index: event.index,
-        commitment: event.commitment,
-        ledger: event.ledger,
-      });
-      await this.storage.put('pool_encrypted_outputs', {
-        commitment: event.commitment,
-        index: event.index,
-        encryptedOutput: event.encryptedOutput,
-        ledger: event.ledger,
-      });
+    const sorted = [...events].sort((a, b) => a.index - b.index);
+
+    const newLeaves: any[] = [];
+    const newOutputs: any[] = [];
+
+    for (const event of sorted) {
+      if (event.index < this.bridge.getNextIndex(this.tree!)) continue;
+
+      newLeaves.push({ index: event.index, commitment: event.commitment, ledger: event.ledger });
+      newOutputs.push({ commitment: event.commitment, index: event.index, encryptedOutput: event.encryptedOutput, ledger: event.ledger });
       this.bridge.insertLeaf(this.tree!, hexToBytes(event.commitment));
     }
+
+    await this.storage.putAll('pool_leaves', newLeaves);
+    await this.storage.putAll('pool_encrypted_outputs', newOutputs);
   }
 
   async processNullifierEvents(events: NullifierEvent[]): Promise<void> {
-    for (const event of events) {
-      await this.storage.put('pool_nullifiers', {
-        nullifier: event.nullifier,
-        ledger: event.ledger,
-      });
-    }
+    await this.storage.putAll('pool_nullifiers', events.map(e => ({
+      nullifier: e.nullifier,
+      ledger: e.ledger,
+    })));
   }
 
   getRoot(): Uint8Array {

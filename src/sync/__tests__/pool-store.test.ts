@@ -17,7 +17,7 @@ function fakeEvent(index: number, ledger: number = 100): CommitmentEvent {
   };
 }
 
-describe('PoolStore', { timeout: 15_000 }, () => {
+describe('PoolStore', () => {
   let bridge: WasmBridge;
   let storage: MemoryStorage;
   let poolStore: PoolStore;
@@ -98,6 +98,35 @@ describe('PoolStore', { timeout: 15_000 }, () => {
     expect(await poolStore.isNullifierSpent('0xaaa')).toBe(true);
     expect(await poolStore.isNullifierSpent('0xbbb')).toBe(true);
     expect(await poolStore.isNullifierSpent('0xccc')).toBe(false);
+  });
+
+  it('skips duplicate events', async () => {
+    await poolStore.processCommitmentEvents([fakeEvent(0), fakeEvent(1)]);
+    const rootAfterFirst = poolStore.getRoot();
+
+    // Process same events again
+    await poolStore.processCommitmentEvents([fakeEvent(0), fakeEvent(1)]);
+    expect(poolStore.getRoot()).toEqual(rootAfterFirst);
+    expect(poolStore.getNextIndex()).toBe(2);
+  });
+
+  it('handles out-of-order events', async () => {
+    // Send events in reverse order
+    await poolStore.processCommitmentEvents([fakeEvent(1), fakeEvent(0)]);
+
+    // Should produce same root as in-order
+    const poolStore2 = new PoolStore(storage, bridge);
+    await poolStore2.processCommitmentEvents([fakeEvent(0), fakeEvent(1)]);
+
+    expect(poolStore.getRoot()).toEqual(poolStore2.getRoot());
+  });
+
+  it('rebuildTree throws on non-contiguous leaf indices', async () => {
+    // Manually insert leaves with a gap (index 0 and 2, missing 1)
+    await storage.put('pool_leaves', { index: 0, commitment: fakeCommitment(0), ledger: 100 });
+    await storage.put('pool_leaves', { index: 2, commitment: fakeCommitment(2), ledger: 100 });
+
+    await expect(poolStore.rebuildTree()).rejects.toThrow('expected leaf index 1, got 2');
   });
 
   it('getRoot throws if tree not built', () => {

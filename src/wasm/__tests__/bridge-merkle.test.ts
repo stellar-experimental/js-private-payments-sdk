@@ -4,7 +4,7 @@ import { TREE_DEPTH } from '../../utils.js';
 
 const FIELD_BYTES = 32;
 
-describe('WasmBridge merkle tree', { timeout: 15_000 }, () => {
+describe('WasmBridge merkle tree', () => {
   let bridge: WasmBridge;
 
   beforeAll(async () => {
