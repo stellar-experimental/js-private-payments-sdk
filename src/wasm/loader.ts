@@ -4,15 +4,15 @@ import { fileURLToPath } from 'node:url';
 export async function loadArtifact(source: string | Uint8Array): Promise<Uint8Array> {
   if (source instanceof Uint8Array) return source;
 
-  if (typeof globalThis.fetch === 'function' && source.startsWith('http')) {
+  if (typeof globalThis.fetch === 'function' && (source.startsWith('https://') || source.startsWith('http://'))) {
     const response = await fetch(source);
     if (!response.ok) throw new Error(`Failed to fetch artifact: ${source} (${response.status})`);
     return new Uint8Array(await response.arrayBuffer());
   }
 
-  // Lazy import node:fs to avoid breaking browser bundles
-  const { readFileSync } = await import('node:fs');
-  return readFileSync(source);
+  // Lazy import to avoid breaking browser bundles
+  const { readFile } = await import('node:fs/promises');
+  return await readFile(source);
 }
 
 const ARTIFACTS_DIR = '../../artifacts';

@@ -22,6 +22,8 @@ export class WasmBridge {
   private initialized = false;
 
   async initialize(config: WasmBridgeConfig = {}): Promise<void> {
+    if (this.initialized) return;
+
     // Load WASM module glue code
     const proverGlue = await import(defaultArtifactPath('prover.js'));
     const witnessGlue = await import(defaultArtifactPath('witness.js'));
