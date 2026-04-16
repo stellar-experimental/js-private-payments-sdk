@@ -38,6 +38,7 @@ export class FreighterSigner implements Signer {
     await this.ensureReady();
     const { signedTxXdr, signerAddress, error } = await freighterSignTransaction(xdr, opts);
     if (error) throw new Error(`Transaction signing failed: ${error}`);
+    if (!signedTxXdr) throw new Error('No signed transaction returned');
     return { signedTxXdr, signerAddress };
   }
 
@@ -54,9 +55,10 @@ export class FreighterSigner implements Signer {
 
   async signMessage(
     message: string,
+    opts?: { networkPassphrase?: string },
   ): Promise<{ signedMessage: string; signerAddress: string }> {
     await this.ensureReady();
-    const { signedMessage, signerAddress, error } = await freighterSignMessage(message, {});
+    const { signedMessage, signerAddress, error } = await freighterSignMessage(message, opts ?? {});
     if (error) throw new Error(`Message signing failed: ${error}`);
     if (!signedMessage) throw new Error('No signature returned');
     return { signedMessage: String(signedMessage), signerAddress };

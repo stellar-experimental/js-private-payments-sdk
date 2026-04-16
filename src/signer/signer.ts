@@ -22,5 +22,6 @@ export interface Signer {
    */
   signMessage(
     message: string,
+    opts?: { networkPassphrase?: string },
   ): Promise<{ signedMessage: string; signerAddress: string }>;
 }
