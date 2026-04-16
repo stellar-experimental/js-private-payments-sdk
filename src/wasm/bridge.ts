@@ -4,6 +4,7 @@
  */
 
 import { loadArtifact, defaultArtifactPath } from './loader.js';
+import type { MerkleTreeHandle } from '../types.js';
 
 export interface WasmBridgeConfig {
   /** Proving key bytes or path. Default: bundled artifact. */
@@ -64,5 +65,39 @@ export class WasmBridge {
     if (!this.initialized) throw new Error('WasmBridge not initialized. Call initialize() first.');
   }
 
-  // Crypto methods will be added in the next task.
+  // --- Merkle Tree ---
+
+  createTree(depth: number): MerkleTreeHandle {
+    this.ensureReady();
+    return this.proverModule.MerkleTree.new_with_zero_leaf(depth, this.zeroLeaf()) as MerkleTreeHandle;
+  }
+
+  insertLeaf(tree: MerkleTreeHandle, leaf: Uint8Array): number {
+    this.ensureReady();
+    return (tree as any).insert(leaf);
+  }
+
+  getRoot(tree: MerkleTreeHandle): Uint8Array {
+    this.ensureReady();
+    return (tree as any).root();
+  }
+
+  getProof(tree: MerkleTreeHandle, index: number): { pathElements: Uint8Array; pathIndices: Uint8Array; root: Uint8Array } {
+    this.ensureReady();
+    const proof = (tree as any).get_proof(index);
+    return {
+      pathElements: proof.path_elements,
+      pathIndices: proof.path_indices,
+      root: proof.root,
+    };
+  }
+
+  getNextIndex(tree: MerkleTreeHandle): number {
+    this.ensureReady();
+    return Number((tree as any).next_index);
+  }
+
+  private zeroLeaf(): Uint8Array {
+    return this.proverModule.zero_leaf();
+  }
 }
