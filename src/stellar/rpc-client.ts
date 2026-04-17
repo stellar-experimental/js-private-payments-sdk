@@ -74,6 +74,11 @@ export class RpcClient {
         body: JSON.stringify({ jsonrpc: '2.0', id: Date.now(), method: 'getEvents', params }),
       });
 
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        throw new Error(`RPC request failed: ${response.status} ${response.statusText}${text ? ` - ${text}` : ''}`);
+      }
+
       const json = await response.json();
       if (json.error) {
         const message = json.error.message || JSON.stringify(json.error);
