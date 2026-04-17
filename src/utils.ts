@@ -11,3 +11,20 @@ export function hexToBytes(hex: string): Uint8Array {
   }
   return bytes;
 }
+
+/** Normalize a U256 value (string, bigint, Uint8Array) to a 0x-prefixed 64-char hex string. */
+export function normalizeU256(value: unknown): string {
+  if (value === null || value === undefined) throw new Error('Cannot normalize null/undefined U256 value');
+  if (typeof value === 'string') {
+    const hex = value.startsWith('0x') ? value.slice(2) : value;
+    if (hex.length > 64) throw new Error(`U256 hex string too long: ${hex.length} chars (max 64)`);
+    if (hex.length > 0 && !/^[0-9a-fA-F]+$/.test(hex)) throw new Error('U256 hex string contains invalid characters');
+    return '0x' + hex.padStart(64, '0');
+  }
+  if (typeof value === 'bigint') return '0x' + value.toString(16).padStart(64, '0');
+  if (value instanceof Uint8Array) {
+    if (value.length > 32) throw new Error(`U256 byte array too long: ${value.length} bytes (max 32)`);
+    return '0x' + Array.from(value).map(b => b.toString(16).padStart(2, '0')).join('').padStart(64, '0');
+  }
+  throw new Error(`Unsupported U256 type: ${typeof value}`);
+}
