@@ -11,3 +11,14 @@ export function hexToBytes(hex: string): Uint8Array {
   }
   return bytes;
 }
+
+/** Normalize a U256 value (string, bigint) to a 0x-prefixed 64-char hex string. */
+export function normalizeU256(value: any): string {
+  if (value === null || value === undefined) throw new Error('Cannot normalize null/undefined U256 value');
+  if (typeof value === 'string') {
+    const hex = value.startsWith('0x') ? value.slice(2) : value;
+    return '0x' + hex.padStart(64, '0');
+  }
+  if (typeof value === 'bigint') return '0x' + value.toString(16).padStart(64, '0');
+  return String(value);
+}
