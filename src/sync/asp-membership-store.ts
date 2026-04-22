@@ -25,9 +25,13 @@ export class ASPMembershipStore {
     if (!this.tree) await this.rebuildTree();
     const sorted = [...events].sort((a, b) => a.index - b.index);
 
-    const newLeaves: any[] = [];
+    const newLeaves: ASPMembershipEvent[] = [];
     for (const event of sorted) {
-      if (event.index < this.bridge.getNextIndex(this.tree!)) continue;
+      const nextIndex = this.bridge.getNextIndex(this.tree!);
+      if (event.index < nextIndex) continue;
+      if (event.index !== nextIndex) {
+        throw new Error(`ASP membership event gap: expected index ${nextIndex}, got ${event.index}`);
+      }
       newLeaves.push({ index: event.index, leaf: event.leaf, root: event.root, ledger: event.ledger });
       this.bridge.insertLeaf(this.tree!, hexToBytes(event.leaf));
     }

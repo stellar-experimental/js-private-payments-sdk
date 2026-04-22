@@ -94,6 +94,11 @@ describe('ASPMembershipStore', () => {
     expect(store.getRoot()).toEqual(store2.getRoot());
   });
 
+  it('processMembershipEvents throws on non-contiguous batch', async () => {
+    await expect(store.processMembershipEvents([fakeEvent(0), fakeEvent(2)]))
+      .rejects.toThrow('event gap: expected index 1, got 2');
+  });
+
   it('rebuildTree throws on non-contiguous indices', async () => {
     await storage.put('asp_membership_leaves', { index: 0, leaf: fakeLeaf(0), root: '', ledger: 100 });
     await storage.put('asp_membership_leaves', { index: 2, leaf: fakeLeaf(2), root: '', ledger: 100 });
