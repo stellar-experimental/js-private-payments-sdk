@@ -29,8 +29,11 @@ export class PoolStore {
     const newOutputs: any[] = [];
 
     for (const event of sorted) {
-      if (event.index < this.bridge.getNextIndex(this.tree!)) continue;
-
+      const nextIndex = this.bridge.getNextIndex(this.tree!);
+      if (event.index < nextIndex) continue;
+      if (event.index !== nextIndex) {
+        throw new Error(`Pool commitment event gap: expected index ${nextIndex}, got ${event.index}`);
+      }
       newLeaves.push({ index: event.index, commitment: event.commitment, ledger: event.ledger });
       newOutputs.push({ commitment: event.commitment, index: event.index, encryptedOutput: event.encryptedOutput, ledger: event.ledger });
       this.bridge.insertLeaf(this.tree!, hexToBytes(event.commitment));

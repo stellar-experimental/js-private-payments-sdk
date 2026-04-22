@@ -121,6 +121,11 @@ describe('PoolStore', () => {
     expect(poolStore.getRoot()).toEqual(poolStore2.getRoot());
   });
 
+  it('processCommitmentEvents throws on non-contiguous batch', async () => {
+    await expect(poolStore.processCommitmentEvents([fakeEvent(0), fakeEvent(2)]))
+      .rejects.toThrow('event gap: expected index 1, got 2');
+  });
+
   it('rebuildTree throws on non-contiguous leaf indices', async () => {
     // Manually insert leaves with a gap (index 0 and 2, missing 1)
     await storage.put('pool_leaves', { index: 0, commitment: fakeCommitment(0), ledger: 100 });
