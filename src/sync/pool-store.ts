@@ -9,6 +9,7 @@ export class PoolStore {
   constructor(private storage: StorageBackend, private bridge: WasmBridge) {}
 
   async rebuildTree(): Promise<void> {
+    if (this.tree) this.bridge.freeTree(this.tree);
     this.tree = this.bridge.createTree(TREE_DEPTH);
     const leaves = await this.storage.getAll('pool_leaves');
     leaves.sort((a, b) => a.index - b.index);
@@ -29,8 +30,11 @@ export class PoolStore {
     const newOutputs: any[] = [];
 
     for (const event of sorted) {
-      if (event.index < this.bridge.getNextIndex(this.tree!)) continue;
-
+      const nextIndex = this.bridge.getNextIndex(this.tree!);
+      if (event.index < nextIndex) continue;
+      if (event.index !== nextIndex) {
+        throw new Error(`Pool commitment event gap: expected index ${nextIndex}, got ${event.index}`);
+      }
       newLeaves.push({ index: event.index, commitment: event.commitment, ledger: event.ledger });
       newOutputs.push({ commitment: event.commitment, index: event.index, encryptedOutput: event.encryptedOutput, ledger: event.ledger });
       this.bridge.insertLeaf(this.tree!, hexToBytes(event.commitment));
@@ -52,7 +56,12 @@ export class PoolStore {
   }
 
   getProof(leafIndex: number): { pathElements: Uint8Array; pathIndices: Uint8Array; root: Uint8Array } {
-    return this.bridge.getProof(this.ensureTree(), leafIndex);
+    const tree = this.ensureTree();
+    const next = this.bridge.getNextIndex(tree);
+    if (!Number.isInteger(leafIndex) || leafIndex < 0 || leafIndex >= next) {
+      throw new Error(`getProof: leafIndex ${leafIndex} out of bounds (tree has ${next} leaves)`);
+    }
+    return this.bridge.getProof(tree, leafIndex);
   }
 
   getNextIndex(): number {
