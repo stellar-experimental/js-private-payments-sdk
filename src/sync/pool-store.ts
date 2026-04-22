@@ -9,6 +9,7 @@ export class PoolStore {
   constructor(private storage: StorageBackend, private bridge: WasmBridge) {}
 
   async rebuildTree(): Promise<void> {
+    if (this.tree) this.bridge.freeTree(this.tree);
     this.tree = this.bridge.createTree(TREE_DEPTH);
     const leaves = await this.storage.getAll('pool_leaves');
     leaves.sort((a, b) => a.index - b.index);
@@ -55,7 +56,12 @@ export class PoolStore {
   }
 
   getProof(leafIndex: number): { pathElements: Uint8Array; pathIndices: Uint8Array; root: Uint8Array } {
-    return this.bridge.getProof(this.ensureTree(), leafIndex);
+    const tree = this.ensureTree();
+    const next = this.bridge.getNextIndex(tree);
+    if (!Number.isInteger(leafIndex) || leafIndex < 0 || leafIndex >= next) {
+      throw new Error(`getProof: leafIndex ${leafIndex} out of bounds (tree has ${next} leaves)`);
+    }
+    return this.bridge.getProof(tree, leafIndex);
   }
 
   getNextIndex(): number {
