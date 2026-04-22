@@ -72,6 +72,10 @@ export class WasmBridge {
     return this.proverModule.MerkleTree.new_with_zero_leaf(depth, this.zeroLeaf()) as MerkleTreeHandle;
   }
 
+  freeTree(tree: MerkleTreeHandle): void {
+    (tree as any).free?.();
+  }
+
   insertLeaf(tree: MerkleTreeHandle, leaf: Uint8Array): number {
     this.ensureReady();
     return (tree as any).insert(leaf);

@@ -12,9 +12,3 @@ export interface NullifierEvent {
   nullifier: string;
   ledger: number;
 }
-
-export interface PoolEvents {
-  commitments: CommitmentEvent[];
-  nullifiers: NullifierEvent[];
-  latestLedger: number;
-}
