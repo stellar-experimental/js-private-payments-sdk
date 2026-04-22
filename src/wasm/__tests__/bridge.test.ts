@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { WasmBridge } from '../bridge.js';
 
-describe('WasmBridge', { timeout: 15_000 }, () => {
+describe('WasmBridge', () => {
   let bridge: WasmBridge;
 
   beforeAll(async () => {
