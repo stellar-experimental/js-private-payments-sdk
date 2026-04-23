@@ -16,7 +16,7 @@
  * - asp_membership_leaves: { index (key), leaf, root, ledger }
  * - user_notes: { id (key), owner, blinding, amount, leafIndex, spent, ... }
  * - registered_public_keys: { address (key), encryptionKey, noteKey, ledger }
- * - sync_metadata: { network (key), lastSyncedLedger, cursor }
+ * - sync_metadata: { pool (key), lastSyncedLedger }
  * - retention_config: { rpcEndpoint (key), windowLedgers, detectedAt }
  */
 /** Primary key field for each store. Used by storage implementations to key records. */
@@ -27,7 +27,7 @@ export const STORE_KEYS = {
   asp_membership_leaves: 'index',
   user_notes: 'id',
   registered_public_keys: 'address',
-  sync_metadata: 'network',
+  sync_metadata: 'pool',
   retention_config: 'rpcEndpoint',
 } as const;
 
