@@ -12,3 +12,10 @@ export interface NullifierEvent {
   nullifier: string;
   ledger: number;
 }
+
+export interface ASPMembershipEvent {
+  leaf: string;
+  index: number;
+  root: string;
+  ledger: number;
+}

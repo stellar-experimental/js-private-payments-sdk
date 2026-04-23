@@ -1,28 +1,28 @@
 import type { StorageBackend } from '../storage/storage.js';
 import type { WasmBridge } from '../wasm/bridge.js';
-import type { MerkleTreeHandle, CommitmentEvent, NullifierEvent } from '../types.js';
-import { POOL_TREE_DEPTH, hexToBytes } from '../utils.js';
+import type { MerkleTreeHandle, ASPMembershipEvent } from '../types.js';
+import { ASP_TREE_DEPTH, hexToBytes } from '../utils.js';
 
-export class PoolStore {
+export class ASPMembershipStore {
   private tree: MerkleTreeHandle | null = null;
 
   constructor(private storage: StorageBackend, private bridge: WasmBridge) {}
 
   async rebuildTree(): Promise<void> {
     if (this.tree) this.bridge.freeTree(this.tree);
-    this.tree = this.bridge.createTree(POOL_TREE_DEPTH);
-    const leaves = await this.storage.getAll('pool_leaves');
+    this.tree = this.bridge.createTree(ASP_TREE_DEPTH);
+    const leaves = await this.storage.getAll('asp_membership_leaves');
     leaves.sort((a, b) => a.index - b.index);
     for (const leaf of leaves) {
       const expected = this.bridge.getNextIndex(this.tree);
       if (leaf.index !== expected) {
-        throw new Error(`Pool tree rebuild failed: expected leaf index ${expected}, got ${leaf.index}. Storage may be corrupted or missing leaves.`);
+        throw new Error(`ASP membership tree rebuild failed: expected leaf index ${expected}, got ${leaf.index}. Storage may be corrupted or missing leaves.`);
       }
-      this.bridge.insertLeaf(this.tree, hexToBytes(leaf.commitment));
+      this.bridge.insertLeaf(this.tree, hexToBytes(leaf.leaf));
     }
   }
 
-  async processCommitmentEvents(events: CommitmentEvent[]): Promise<void> {
+  async processMembershipEvents(events: ASPMembershipEvent[]): Promise<void> {
     if (!this.tree) await this.rebuildTree();
     const sorted = [...events].sort((a, b) => a.index - b.index);
     const startIndex = this.bridge.getNextIndex(this.tree!);
@@ -32,24 +32,16 @@ export class PoolStore {
     for (let i = 0; i < fresh.length; i++) {
       const expected = startIndex + i;
       if (fresh[i].index !== expected) {
-        throw new Error(`Pool commitment event gap: expected index ${expected}, got ${fresh[i].index}`);
+        throw new Error(`ASP membership event gap: expected index ${expected}, got ${fresh[i].index}`);
       }
     }
 
     // Mutate tree + persist
     for (const event of fresh) {
-      this.bridge.insertLeaf(this.tree!, hexToBytes(event.commitment));
+      this.bridge.insertLeaf(this.tree!, hexToBytes(event.leaf));
     }
 
-    await this.storage.putAll('pool_leaves', fresh.map(e => ({ index: e.index, commitment: e.commitment, ledger: e.ledger })));
-    await this.storage.putAll('pool_encrypted_outputs', fresh.map(e => ({ commitment: e.commitment, index: e.index, encryptedOutput: e.encryptedOutput, ledger: e.ledger })));
-  }
-
-  async processNullifierEvents(events: NullifierEvent[]): Promise<void> {
-    await this.storage.putAll('pool_nullifiers', events.map(e => ({
-      nullifier: e.nullifier,
-      ledger: e.ledger,
-    })));
+    await this.storage.putAll('asp_membership_leaves', fresh);
   }
 
   getRoot(): Uint8Array {
@@ -67,11 +59,6 @@ export class PoolStore {
 
   getNextIndex(): number {
     return this.bridge.getNextIndex(this.ensureTree());
-  }
-
-  async isNullifierSpent(nullifier: string): Promise<boolean> {
-    const record = await this.storage.get('pool_nullifiers', nullifier);
-    return record !== undefined;
   }
 
   private ensureTree(): MerkleTreeHandle {
