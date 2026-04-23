@@ -1,7 +1,7 @@
 import type { StorageBackend } from '../storage/storage.js';
 import type { WasmBridge } from '../wasm/bridge.js';
 import type { MerkleTreeHandle, ASPMembershipEvent } from '../types.js';
-import { TREE_DEPTH, hexToBytes } from '../utils.js';
+import { ASP_TREE_DEPTH, hexToBytes } from '../utils.js';
 
 export class ASPMembershipStore {
   private tree: MerkleTreeHandle | null = null;
@@ -10,7 +10,7 @@ export class ASPMembershipStore {
 
   async rebuildTree(): Promise<void> {
     if (this.tree) this.bridge.freeTree(this.tree);
-    this.tree = this.bridge.createTree(TREE_DEPTH);
+    this.tree = this.bridge.createTree(ASP_TREE_DEPTH);
     const leaves = await this.storage.getAll('asp_membership_leaves');
     leaves.sort((a, b) => a.index - b.index);
     for (const leaf of leaves) {
@@ -25,19 +25,23 @@ export class ASPMembershipStore {
   async processMembershipEvents(events: ASPMembershipEvent[]): Promise<void> {
     if (!this.tree) await this.rebuildTree();
     const sorted = [...events].sort((a, b) => a.index - b.index);
+    const startIndex = this.bridge.getNextIndex(this.tree!);
+    const fresh = sorted.filter(e => e.index >= startIndex);
 
-    const newLeaves: ASPMembershipEvent[] = [];
-    for (const event of sorted) {
-      const nextIndex = this.bridge.getNextIndex(this.tree!);
-      if (event.index < nextIndex) continue;
-      if (event.index !== nextIndex) {
-        throw new Error(`ASP membership event gap: expected index ${nextIndex}, got ${event.index}`);
+    // Validate contiguity before mutating
+    for (let i = 0; i < fresh.length; i++) {
+      const expected = startIndex + i;
+      if (fresh[i].index !== expected) {
+        throw new Error(`ASP membership event gap: expected index ${expected}, got ${fresh[i].index}`);
       }
-      newLeaves.push({ index: event.index, leaf: event.leaf, root: event.root, ledger: event.ledger });
+    }
+
+    // Mutate tree + persist
+    for (const event of fresh) {
       this.bridge.insertLeaf(this.tree!, hexToBytes(event.leaf));
     }
 
-    await this.storage.putAll('asp_membership_leaves', newLeaves);
+    await this.storage.putAll('asp_membership_leaves', fresh);
   }
 
   getRoot(): Uint8Array {

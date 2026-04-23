@@ -1,7 +1,7 @@
 import type { StorageBackend } from '../storage/storage.js';
 import type { WasmBridge } from '../wasm/bridge.js';
 import type { MerkleTreeHandle, CommitmentEvent, NullifierEvent } from '../types.js';
-import { TREE_DEPTH, hexToBytes } from '../utils.js';
+import { POOL_TREE_DEPTH, hexToBytes } from '../utils.js';
 
 export class PoolStore {
   private tree: MerkleTreeHandle | null = null;
@@ -10,7 +10,7 @@ export class PoolStore {
 
   async rebuildTree(): Promise<void> {
     if (this.tree) this.bridge.freeTree(this.tree);
-    this.tree = this.bridge.createTree(TREE_DEPTH);
+    this.tree = this.bridge.createTree(POOL_TREE_DEPTH);
     const leaves = await this.storage.getAll('pool_leaves');
     leaves.sort((a, b) => a.index - b.index);
     for (const leaf of leaves) {
@@ -25,23 +25,24 @@ export class PoolStore {
   async processCommitmentEvents(events: CommitmentEvent[]): Promise<void> {
     if (!this.tree) await this.rebuildTree();
     const sorted = [...events].sort((a, b) => a.index - b.index);
+    const startIndex = this.bridge.getNextIndex(this.tree!);
+    const fresh = sorted.filter(e => e.index >= startIndex);
 
-    const newLeaves: any[] = [];
-    const newOutputs: any[] = [];
-
-    for (const event of sorted) {
-      const nextIndex = this.bridge.getNextIndex(this.tree!);
-      if (event.index < nextIndex) continue;
-      if (event.index !== nextIndex) {
-        throw new Error(`Pool commitment event gap: expected index ${nextIndex}, got ${event.index}`);
+    // Validate contiguity before mutating
+    for (let i = 0; i < fresh.length; i++) {
+      const expected = startIndex + i;
+      if (fresh[i].index !== expected) {
+        throw new Error(`Pool commitment event gap: expected index ${expected}, got ${fresh[i].index}`);
       }
-      newLeaves.push({ index: event.index, commitment: event.commitment, ledger: event.ledger });
-      newOutputs.push({ commitment: event.commitment, index: event.index, encryptedOutput: event.encryptedOutput, ledger: event.ledger });
+    }
+
+    // Mutate tree + persist
+    for (const event of fresh) {
       this.bridge.insertLeaf(this.tree!, hexToBytes(event.commitment));
     }
 
-    await this.storage.putAll('pool_leaves', newLeaves);
-    await this.storage.putAll('pool_encrypted_outputs', newOutputs);
+    await this.storage.putAll('pool_leaves', fresh.map(e => ({ index: e.index, commitment: e.commitment, ledger: e.ledger })));
+    await this.storage.putAll('pool_encrypted_outputs', fresh.map(e => ({ commitment: e.commitment, index: e.index, encryptedOutput: e.encryptedOutput, ledger: e.ledger })));
   }
 
   async processNullifierEvents(events: NullifierEvent[]): Promise<void> {
