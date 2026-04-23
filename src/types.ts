@@ -13,9 +13,20 @@ export interface NullifierEvent {
   ledger: number;
 }
 
+export interface PoolEvents {
+  commitments: CommitmentEvent[];
+  nullifiers: NullifierEvent[];
+  latestLedger: number;
+}
+
 export interface ASPMembershipEvent {
   leaf: string;
   index: number;
   root: string;
   ledger: number;
+}
+
+export interface ASPMembershipEvents {
+  leaves: ASPMembershipEvent[];
+  latestLedger: number;
 }
