@@ -4,6 +4,7 @@
  */
 
 import { loadArtifact, defaultArtifactPath } from './loader.js';
+import { bytesToBigIntLE } from '../utils.js';
 import type { MerkleTreeHandle } from '../types.js';
 
 export interface WasmBridgeConfig {
@@ -63,6 +64,82 @@ export class WasmBridge {
 
   private ensureReady(): void {
     if (!this.initialized) throw new Error('WasmBridge not initialized. Call initialize() first.');
+  }
+
+  // --- Hashing ---
+
+  poseidon2Hash(input0: Uint8Array, input1: Uint8Array, domain: number): Uint8Array {
+    this.ensureReady();
+    return this.proverModule.poseidon2_hash2(input0, input1, domain);
+  }
+
+  // --- Commitments & Nullifiers ---
+
+  computeCommitment(amount: Uint8Array, pubKey: Uint8Array, blinding: Uint8Array): Uint8Array {
+    this.ensureReady();
+    return this.proverModule.compute_commitment(amount, pubKey, blinding);
+  }
+
+  computeSignature(privKey: Uint8Array, commitment: Uint8Array, pathIndices: Uint8Array): Uint8Array {
+    this.ensureReady();
+    return this.proverModule.compute_signature(privKey, commitment, pathIndices);
+  }
+
+  computeNullifier(commitment: Uint8Array, pathIndices: Uint8Array, signature: Uint8Array): Uint8Array {
+    this.ensureReady();
+    return this.proverModule.compute_nullifier(commitment, pathIndices, signature);
+  }
+
+  // --- Key Derivation ---
+
+  deriveNotePrivateKey(signature: Uint8Array): Uint8Array {
+    this.ensureReady();
+    return this.proverModule.derive_note_private_key(signature);
+  }
+
+  derivePublicKey(privateKey: Uint8Array): Uint8Array {
+    this.ensureReady();
+    return this.proverModule.derive_public_key(privateKey);
+  }
+
+  deriveEncryptionKeypair(signature: Uint8Array): { publicKey: Uint8Array; privateKey: Uint8Array } {
+    this.ensureReady();
+    const bytes: Uint8Array = this.proverModule.derive_keypair_from_signature(signature);
+    return {
+      publicKey: bytes.slice(0, 32),
+      privateKey: bytes.slice(32, 64),
+    };
+  }
+
+  // --- Blinding & Field ---
+
+  generateBlinding(): Uint8Array {
+    this.ensureReady();
+    return this.proverModule.generate_random_blinding();
+  }
+
+  bigintToField(value: bigint): Uint8Array {
+    this.ensureReady();
+    return this.proverModule.decimal_to_field_bytes(value.toString());
+  }
+
+  bn256Modulus(): bigint {
+    this.ensureReady();
+    return bytesToBigIntLE(this.proverModule.bn256_modulus());
+  }
+
+  // --- Encryption ---
+
+  encryptNote(recipientPubKey: Uint8Array, plaintext: Uint8Array): Uint8Array {
+    this.ensureReady();
+    return this.proverModule.encrypt_note_data(recipientPubKey, plaintext);
+  }
+
+  decryptNote(privateKey: Uint8Array, ciphertext: Uint8Array): Uint8Array | null {
+    this.ensureReady();
+    const result = this.proverModule.decrypt_note_data(privateKey, ciphertext);
+    if (!result || result.length === 0) return null;
+    return result;
   }
 
   // --- Merkle Tree ---

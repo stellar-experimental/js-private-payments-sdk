@@ -30,3 +30,20 @@ export interface ASPMembershipEvents {
   leaves: ASPMembershipEvent[];
   latestLedger: number;
 }
+
+export interface MembershipProofData {
+  leaf: string;
+  blinding: string;
+  pathIndices: string;
+  pathElements: string[];
+  root: string;
+}
+
+export interface NonMembershipProofData {
+  key: string;
+  oldKey: string;
+  oldValue: string;
+  isOld0: string;
+  siblings: string[];
+  root: string;
+}
