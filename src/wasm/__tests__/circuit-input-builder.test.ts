@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { WasmBridge } from '../bridge.js';
 import { CircuitInputBuilder } from '../circuit-input-builder.js';
 import type { MembershipProofData, NonMembershipProofData } from '../../types.js';
-import { POOL_TREE_DEPTH } from '../../utils.js';
+import { POOL_TREE_DEPTH, ASP_TREE_DEPTH } from '../../utils.js';
 
 describe('CircuitInputBuilder.buildDeposit', () => {
   let bridge: WasmBridge;
@@ -24,7 +24,7 @@ describe('CircuitInputBuilder.buildDeposit', () => {
     oldKey: '0',
     oldValue: '0',
     isOld0: '1',
-    siblings: Array(10).fill('0'),
+    siblings: Array(ASP_TREE_DEPTH).fill('0'),
     root: '0',
   };
 
@@ -143,8 +143,7 @@ describe('CircuitInputBuilder.buildDeposit', () => {
     expect(extData.encrypted_output1.length).toBeGreaterThan(0);
   });
 
-  it('is deterministic for commitments given same blinding', () => {
-    // Two builds with different blindings should produce different commitments
+  it('random blindings produce different commitments across builds', () => {
     const r1 = builder.buildDeposit({
       amountStroops: 10n,
       privKeyBytes,

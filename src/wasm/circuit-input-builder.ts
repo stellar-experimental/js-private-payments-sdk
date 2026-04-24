@@ -68,6 +68,9 @@ export class CircuitInputBuilder {
 
     const privKeyBigInt = bytesToBigIntLE(privKeyBytes);
 
+    if (amountStroops <= 0n) throw new Error('Deposit amount must be positive');
+    if (amountStroops >= 2n ** 64n) throw new Error('Deposit amount exceeds maximum (2^64)');
+
     // Create 2 dummy inputs (deposit spends no existing notes)
     const dummyInput1 = this.createDummyInput(privKeyBytes, pubKeyBytes);
     const dummyInput2 = this.createDummyInput(privKeyBytes, pubKeyBytes);
