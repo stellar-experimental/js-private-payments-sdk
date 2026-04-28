@@ -142,6 +142,23 @@ export class WasmBridge {
     return result;
   }
 
+  // --- Proof ---
+
+  /**
+   * Generate a ZK proof from circuit inputs.
+   * Computes witness, generates Groth16 proof, and extracts public inputs.
+   * @param circuitInputs - Circuit inputs from CircuitInputBuilder
+   * @returns Proof (256 bytes uncompressed Soroban format) and public inputs
+   */
+  prove(circuitInputs: Record<string, any>): { proof: Uint8Array; publicInputs: Uint8Array } {
+    this.ensureReady();
+    const witness = this.witnessInstance.compute_witness(JSON.stringify(circuitInputs));
+    return {
+      proof: this.proverInstance.prove_bytes_uncompressed(witness),
+      publicInputs: this.proverInstance.extract_public_inputs(witness),
+    };
+  }
+
   // --- Merkle Tree ---
 
   createTree(depth: number): MerkleTreeHandle {
