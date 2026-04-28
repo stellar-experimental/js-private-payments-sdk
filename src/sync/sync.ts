@@ -30,12 +30,12 @@ export async function syncAll(
 ): Promise<SyncResult> {
   // Read last synced ledger
   const metadata = await storage.get('sync_metadata', poolAddress);
-  const lastSyncedLedger = metadata?.lastSyncedLedger ?? 1;
+  const fromLedger = (metadata?.lastSyncedLedger ?? 0) + 1;
 
   // Fetch events in parallel
   const [poolEvents, aspEvents] = await Promise.all([
-    rpcClient.fetchPoolEvents(poolAddress, lastSyncedLedger),
-    rpcClient.fetchASPMembershipEvents(aspMembershipAddress, lastSyncedLedger),
+    rpcClient.fetchPoolEvents(poolAddress, fromLedger),
+    rpcClient.fetchASPMembershipEvents(aspMembershipAddress, fromLedger),
   ]);
 
   // Process events into stores
@@ -44,15 +44,15 @@ export async function syncAll(
   await aspMembershipStore.processMembershipEvents(aspEvents.leaves);
 
   // Update sync cursor
-  const latestLedger = Math.min(poolEvents.latestLedger, aspEvents.latestLedger);
+  const toLedger = Math.min(poolEvents.latestLedger, aspEvents.latestLedger);
   await storage.put('sync_metadata', {
     pool: poolAddress,
-    lastSyncedLedger: latestLedger,
+    lastSyncedLedger: toLedger,
   });
 
   return {
-    latestLedger,
-    lastSyncedLedger,
+    fromLedger,
+    toLedger,
     newCommitments: poolEvents.commitments.length,
     newNullifiers: poolEvents.nullifiers.length,
     newMembershipLeaves: aspEvents.leaves.length,

@@ -32,8 +32,8 @@ export interface ASPMembershipEvents {
 }
 
 export interface SyncResult {
-  latestLedger: number;
-  lastSyncedLedger: number;
+  fromLedger: number;
+  toLedger: number;
   newCommitments: number;
   newNullifiers: number;
   newMembershipLeaves: number;

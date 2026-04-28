@@ -54,7 +54,8 @@ describe('syncAll', () => {
 
     const result = await syncAll(rpcClient, storage, poolStore, aspStore, 'POOL', 'ASP');
 
-    expect(result.latestLedger).toBe(1000);
+    expect(result.toLedger).toBe(1000);
+    expect(result.fromLedger).toBe(1);
     expect(result.newCommitments).toBe(2);
     expect(result.newNullifiers).toBe(1);
     expect(result.newMembershipLeaves).toBe(1);
@@ -73,10 +74,10 @@ describe('syncAll', () => {
     const rpcClient = createMockRpcClient(emptyEvents, emptyAspEvents);
 
     const first = await syncAll(rpcClient, storage, poolStore, aspStore, 'POOL', 'ASP');
-    expect(first.lastSyncedLedger).toBe(1);
+    expect(first.fromLedger).toBe(1);
 
     const second = await syncAll(rpcClient, storage, poolStore, aspStore, 'POOL', 'ASP');
-    expect(second.lastSyncedLedger).toBe(1000);
+    expect(second.fromLedger).toBe(1001);
   });
 
   it('updates sync_metadata in storage', async () => {
