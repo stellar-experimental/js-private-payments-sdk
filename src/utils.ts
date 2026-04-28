@@ -15,6 +15,24 @@ export function hexToBytes(hex: string): Uint8Array {
   return bytes;
 }
 
+/** Convert little-endian bytes to bigint. */
+export function bytesToBigIntLE(bytes: Uint8Array): bigint {
+  let result = 0n;
+  for (let i = bytes.length - 1; i >= 0; i--) {
+    result = (result << 8n) | BigInt(bytes[i]);
+  }
+  return result;
+}
+
+/** Convert big-endian bytes to bigint. */
+export function bytesToBigIntBE(bytes: Uint8Array): bigint {
+  let result = 0n;
+  for (let i = 0; i < bytes.length; i++) {
+    result = (result << 8n) | BigInt(bytes[i]);
+  }
+  return result;
+}
+
 /** Normalize a U256 value (string, bigint, Uint8Array) to a 0x-prefixed 64-char hex string. */
 export function normalizeU256(value: unknown): string {
   if (value === null || value === undefined) throw new Error('Cannot normalize null/undefined U256 value');
