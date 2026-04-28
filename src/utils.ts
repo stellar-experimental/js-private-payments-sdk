@@ -6,12 +6,15 @@ export const POOL_TREE_DEPTH = 10;
 /** ASP membership Merkle tree depth. Must match circuit and contract deployment. */
 export const ASP_TREE_DEPTH = 10;
 
-/** Convert XLM to stroops. */
+/** Convert XLM to stroops (e.g., 10 → 100000000n, "1.5" → 15000000n). Must be non-negative. */
 export function xlmToStroops(xlm: number | string): bigint {
-  const parts = String(xlm).split('.');
-  const whole = BigInt(parts[0] || '0') * STROOPS_PER_XLM;
+  const str = String(xlm).trim();
+  if (!/^\d+(\.\d+)?$/.test(str)) throw new Error(`Invalid XLM amount: ${str}`);
+  const parts = str.split('.');
+  const whole = BigInt(parts[0]) * STROOPS_PER_XLM;
   if (parts.length === 1) return whole;
-  const decimalStr = (parts[1] || '0').padEnd(7, '0').slice(0, 7);
+  if (parts[1].length > 7) throw new Error(`XLM amount has too many decimal places (max 7): ${str}`);
+  const decimalStr = parts[1].padEnd(7, '0');
   return whole + BigInt(decimalStr);
 }
 

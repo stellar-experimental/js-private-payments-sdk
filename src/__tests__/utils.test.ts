@@ -1,5 +1,75 @@
 import { describe, it, expect } from 'vitest';
-import { hexToBytes, normalizeU256 } from '../utils.js';
+import { xlmToStroops, hexToBytes, normalizeU256 } from '../utils.js';
+
+describe('xlmToStroops', () => {
+  it('converts whole number', () => {
+    expect(xlmToStroops(999999999)).toBe(9_999_999_990_000_000n);
+  });
+
+  it('converts string whole number with whitespace', () => {
+    expect(xlmToStroops(' 10 ')).toBe(100_000_000n);
+  });
+
+  it('converts decimal', () => {
+    expect(xlmToStroops('1.5')).toBe(15_000_000n);
+  });
+
+  it('converts small decimal', () => {
+    expect(xlmToStroops('0.0000001')).toBe(1n);
+  });
+
+  it('converts zero decimal', () => {
+    expect(xlmToStroops('1.0000000')).toBe(10_000_000n);
+  });
+
+  it('converts 7 decimal places exactly', () => {
+    expect(xlmToStroops('1.1234567')).toBe(11_234_567n);
+  });
+
+  it('converts zero', () => {
+    expect(xlmToStroops(0)).toBe(0n);
+  });
+
+  it('converts string zero', () => {
+    expect(xlmToStroops('0')).toBe(0n);
+  });
+
+  it('throws on negative number', () => {
+    expect(() => xlmToStroops(-1)).toThrow('Invalid XLM amount');
+  });
+
+  it('throws on negative string', () => {
+    expect(() => xlmToStroops('-1.5')).toThrow('Invalid XLM amount');
+  });
+
+  it('throws on more than 7 decimal places', () => {
+    expect(() => xlmToStroops('1.12345678')).toThrow('too many decimal places');
+  });
+
+  it('throws on multiple dots', () => {
+    expect(() => xlmToStroops('1.2.3')).toThrow('Invalid XLM amount');
+  });
+
+  it('throws on scientific notation', () => {
+    expect(() => xlmToStroops(1e-7)).toThrow('Invalid XLM amount');
+  });
+
+  it('throws on non-numeric string', () => {
+    expect(() => xlmToStroops('abc')).toThrow('Invalid XLM amount');
+  });
+
+  it('throws on empty string', () => {
+    expect(() => xlmToStroops('')).toThrow('Invalid XLM amount');
+  });
+
+  it('throws on leading dot', () => {
+    expect(() => xlmToStroops('.5')).toThrow('Invalid XLM amount');
+  });
+
+  it('throws on trailing dot', () => {
+    expect(() => xlmToStroops('1.')).toThrow('Invalid XLM amount');
+  });
+});
 
 describe('hexToBytes', () => {
   it('converts hex string to bytes', () => {
@@ -68,7 +138,7 @@ describe('normalizeU256', () => {
     const big = (1n << 255n) - 1n;
     const result = normalizeU256(big);
     expect(result.startsWith('0x')).toBe(true);
-    expect(result.length).toBe(66); // 0x + 64 chars
+    expect(result.length).toBe(66);
   });
 
   it('converts single byte Uint8Array', () => {

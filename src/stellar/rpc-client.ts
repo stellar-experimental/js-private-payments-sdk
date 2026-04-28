@@ -91,9 +91,9 @@ export class RpcClient {
 
   /**
    * Submit a pool transact() call with proof and ext data.
-   * Builds the contract call, signs via the signer, submits, and waits for confirmation.
-   * @returns Transaction hash and ledger
-   * @throws {Error} If proof is invalid, signing fails, or transaction is rejected
+   * Builds the contract call, signs via the signer, submits, and waits up to 30s for confirmation.
+   * @returns Transaction hash and ledger. Ledger is 0 if confirmation timed out (tx may still succeed).
+   * @throws {Error} If proof is invalid, signing fails, or transaction is rejected on-chain
    */
   async submitTransaction(params: {
     poolContractAddress: string;
@@ -104,6 +104,7 @@ export class RpcClient {
   }): Promise<{ txHash: string; ledger: number }> {
     const { poolContractAddress, signer, proof, publicInputs, extData } = params;
     if (proof.length !== 256) throw new Error(`Invalid proof: expected 256 bytes, got ${proof.length}`);
+    if (publicInputs.length < 288) throw new Error(`Invalid publicInputs: expected at least 288 bytes (9 fields × 32), got ${publicInputs.length}`);
 
     const address = await signer.getPublicKey();
 
@@ -179,7 +180,7 @@ export class RpcClient {
       }
     }
 
-    // Timed out waiting but tx may still succeed
+    // Timed out — tx was submitted but not yet confirmed. ledger: 0 indicates unconfirmed.
     return { txHash, ledger: 0 };
   }
 
