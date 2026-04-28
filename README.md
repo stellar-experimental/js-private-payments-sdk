@@ -42,6 +42,7 @@ const pool = new PrivatePool({
   rpcUrl: 'https://soroban-testnet.stellar.org',
   networkPassphrase: 'Test SDF Network ; September 2015',
   poolContract: 'CA2TZ...',
+  aspMembershipContract: 'CAC7Y...',
   signer: new FreighterSigner(),
 });
 
@@ -99,6 +100,7 @@ const pool = new PrivatePool({
   rpcUrl: 'https://soroban-testnet.stellar.org',
   networkPassphrase: 'Test SDF Network ; September 2015',
   poolContract: 'CA2TZ...',
+  aspMembershipContract: 'CAC7Y...',
   signer: new KeypairSigner('SCZANGBA5YHTNYVVV3C7CAZMCLP...'),
 });
 
@@ -117,8 +119,11 @@ interface PrivatePoolConfig {
   /** Stellar network passphrase */
   networkPassphrase: string;
 
-  /** Pool contract address — SDK reads verifier + ASP addresses from it */
+  /** Pool contract address */
   poolContract: string;
+
+  /** ASP Membership contract address */
+  aspMembershipContract: string;
 
   /** Wallet signer */
   signer: Signer;

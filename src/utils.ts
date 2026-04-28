@@ -1,9 +1,21 @@
+const STROOPS_PER_XLM = 10_000_000n;
+
 /** Pool commitment Merkle tree depth. Must match circuit and contract deployment. */
 export const POOL_TREE_DEPTH = 10;
 
 /** ASP membership Merkle tree depth. Must match circuit and contract deployment. */
 export const ASP_TREE_DEPTH = 10;
 
+/** Convert XLM to stroops. */
+export function xlmToStroops(xlm: number | string): bigint {
+  const parts = String(xlm).split('.');
+  const whole = BigInt(parts[0] || '0') * STROOPS_PER_XLM;
+  if (parts.length === 1) return whole;
+  const decimalStr = (parts[1] || '0').padEnd(7, '0').slice(0, 7);
+  return whole + BigInt(decimalStr);
+}
+
+/** Convert hex string to Uint8Array. Validates even length and hex characters. */
 export function hexToBytes(hex: string): Uint8Array {
   const clean = hex.startsWith('0x') ? hex.slice(2) : hex;
   if (clean.length % 2 !== 0) throw new Error(`Hex string must have even length, got ${clean.length}`);

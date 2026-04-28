@@ -1,6 +1,7 @@
-import { rpc, xdr, scValToNative } from '@stellar/stellar-sdk';
+import { rpc, xdr, scValToNative, contract, XdrLargeInt } from '@stellar/stellar-sdk';
+import type { Signer } from '../signer/signer.js';
 import type { PoolEvents, ASPMembershipEvents, CommitmentEvent, NullifierEvent, ASPMembershipEvent } from '../types.js';
-import { hexToBytes, normalizeU256 } from '../utils.js';
+import { hexToBytes, normalizeU256, bytesToBigIntBE } from '../utils.js';
 
 export interface RpcClientConfig {
   rpcUrl: string;
@@ -86,6 +87,100 @@ export class RpcClient {
     });
 
     return { leaves, latestLedger };
+  }
+
+  /**
+   * Submit a pool transact() call with proof and ext data.
+   * Builds the contract call, signs via the signer, submits, and waits for confirmation.
+   * @returns Transaction hash and ledger
+   * @throws {Error} If proof is invalid, signing fails, or transaction is rejected
+   */
+  async submitTransaction(params: {
+    poolContractAddress: string;
+    signer: Signer;
+    proof: Uint8Array;
+    publicInputs: Uint8Array;
+    extData: { recipient: string; ext_amount: bigint; encrypted_output0: Uint8Array; encrypted_output1: Uint8Array };
+  }): Promise<{ txHash: string; ledger: number }> {
+    const { poolContractAddress, signer, proof, publicInputs, extData } = params;
+    if (proof.length !== 256) throw new Error(`Invalid proof: expected 256 bytes, got ${proof.length}`);
+
+    const address = await signer.getPublicKey();
+
+    // Parse public inputs (9 field elements × 32 bytes each = 288 bytes)
+    // Order: root, publicAmount, extDataHash, aspMembershipRoot, aspNonMembershipRoot, nullifier0, nullifier1, commitment0, commitment1
+    const fieldSize = 32;
+    const parseField = (offset: number) => bytesToBigIntBE(publicInputs.slice(offset, offset + fieldSize));
+    const poolRoot = parseField(0);
+    const publicAmount = parseField(fieldSize);
+    const extDataHash = publicInputs.slice(fieldSize * 2, fieldSize * 3);
+    const aspMembershipRoot = parseField(fieldSize * 3);
+    const aspNonMembershipRoot = parseField(fieldSize * 4);
+    const nullifier0 = parseField(fieldSize * 5);
+    const nullifier1 = parseField(fieldSize * 6);
+    const commitment0 = parseField(fieldSize * 7);
+    const commitment1 = parseField(fieldSize * 8);
+
+    const contractProof = {
+      proof: {
+        a: proof.slice(0, 64),
+        b: proof.slice(64, 192),
+        c: proof.slice(192, 256),
+      },
+      root: poolRoot,
+      input_nullifiers: [nullifier0, nullifier1],
+      output_commitment0: commitment0,
+      output_commitment1: commitment1,
+      public_amount: publicAmount,
+      ext_data_hash: extDataHash,
+      asp_membership_root: aspMembershipRoot,
+      asp_non_membership_root: aspNonMembershipRoot,
+    };
+
+    const contractExtData = {
+      encrypted_output0: extData.encrypted_output0,
+      encrypted_output1: extData.encrypted_output1,
+      ext_amount: new XdrLargeInt('i256', extData.ext_amount.toString()).toScVal(),
+      recipient: extData.recipient,
+    };
+
+    // Build contract client with signer callbacks
+    const client = await contract.Client.from({
+      rpcUrl: this.config.rpcUrl,
+      networkPassphrase: this.config.networkPassphrase,
+      publicKey: address,
+      contractId: poolContractAddress,
+      signTransaction: (txXdr: string) =>
+        signer.signTransaction(txXdr, { networkPassphrase: this.config.networkPassphrase }),
+      signAuthEntry: (entryXdr: string) =>
+        signer.signAuthEntry(entryXdr, { networkPassphrase: this.config.networkPassphrase }),
+    });
+
+    // transact() is a pool-specific method discovered from the contract's ABI at runtime
+    const tx = await (client as any).transact({
+      proof: contractProof,
+      ext_data: contractExtData,
+      sender: address,
+    });
+
+    const sent = await tx.signAndSend();
+    const txHash = sent?.sendTransactionResponse?.hash ?? sent?.hash ?? null;
+    if (!txHash) throw new Error('Transaction submission failed: no hash returned');
+
+    // Wait for confirmation
+    for (let i = 0; i < 30; i++) {
+      await new Promise(r => setTimeout(r, 1000));
+      const res = await this.server.getTransaction(txHash);
+      if (res?.status === 'SUCCESS') {
+        return { txHash, ledger: res.ledger };
+      }
+      if (res?.status === 'FAILED') {
+        throw new Error(`Transaction failed: ${res?.resultXdr ?? 'unknown error'}`);
+      }
+    }
+
+    // Timed out waiting but tx may still succeed
+    return { txHash, ledger: 0 };
   }
 
   private async fetchContractEvents(
