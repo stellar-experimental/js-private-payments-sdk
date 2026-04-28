@@ -47,3 +47,11 @@ export interface NonMembershipProofData {
   siblings: string[];
   root: string;
 }
+
+export interface SyncResult {
+  fromLedger: number;
+  toLedger: number;
+  newCommitments: number;
+  newNullifiers: number;
+  newMembershipLeaves: number;
+}
